@@ -29,7 +29,7 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             HttpServletResponse servletResponse = ((ServletServerHttpResponse) response).getServletResponse();
 
             String token = servletRequest.getHeader("Authorization");
-            if(token != null && token.startsWith("chatUser")) {
+            if(token != null && token.startsWith("user")) {
                 attributes.put("username", token);
                 return true;
             } else {
