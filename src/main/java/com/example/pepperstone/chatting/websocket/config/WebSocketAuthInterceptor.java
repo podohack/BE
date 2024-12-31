@@ -28,9 +28,9 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             HttpServletRequest servletRequest = ((ServletServerHttpRequest) request).getServletRequest();
             HttpServletResponse servletResponse = ((ServletServerHttpResponse) response).getServletResponse();
 
-            String username = servletRequest.getHeader("Authorization");
-            if(username != null && username.startsWith("chatUser")) {
-                attributes.put("username", username);
+            String token = servletRequest.getHeader("Authorization");
+            if(token != null && token.startsWith("chatUser")) {
+                attributes.put("username", token);
                 return true;
             } else {
                 servletResponse.setStatus(401);

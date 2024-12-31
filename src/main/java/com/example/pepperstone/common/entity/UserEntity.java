@@ -19,9 +19,6 @@ public class UserEntity {
     @Column(nullable = false)
     private String username;
 
-    @Column(nullable = false)
-    private String password;
-
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatMessageEntity> chatMessages;
 }
