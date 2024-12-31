@@ -19,8 +19,8 @@ public class UserService {
         Optional<UserEntity> user = userRepo.findByUsername(username);
 
         if (user.isPresent()) {
-            // 인증 성공 - "chatUser" 접두사로 토큰 생성
-            return "chatUser" + user.get().getId();
+            // 인증 성공 - "user" 접두사로 토큰 생성
+            return "user" + user.get().getId();
         } else {
             // 인증 실패
             throw new IllegalArgumentException("Invalid username");
