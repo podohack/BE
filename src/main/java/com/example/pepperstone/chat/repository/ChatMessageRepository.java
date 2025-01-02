@@ -1,4 +1,4 @@
-package com.example.pepperstone.chatting.repository;
+package com.example.pepperstone.chat.repository;
 
 import com.example.pepperstone.common.entity.ChatMessageEntity;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,6 +1,6 @@
-package com.example.pepperstone.chatting.websocket.config;
+package com.example.pepperstone.chat.config;
 
-import com.example.pepperstone.chatting.chat.WebSocketChatHandler;
+import com.example.pepperstone.chat.chatting.WebSocketChatHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
