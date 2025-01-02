@@ -1,18 +1,12 @@
 package com.example.pepperstone.chatting.chat;
 
-import com.example.pepperstone.chatting.chat.dto.ChatDTO;
-import com.example.pepperstone.chatting.chatRoom.ChatRoom;
-import com.example.pepperstone.chatting.repository.ChatMessageRepository;
+import com.example.pepperstone.chatting.dto.ChatDTO;
 import com.example.pepperstone.chatting.repository.ChatRoomRepository;
 import com.example.pepperstone.chatting.service.ChatService;
-import com.example.pepperstone.chatting.websocket.message.WebSocketMessage;
-import com.example.pepperstone.common.entity.ChatMessageEntity;
+import com.example.pepperstone.chatting.chat.message.WebSocketMessage;
 import com.example.pepperstone.common.entity.ChatRoomEntity;
-import com.example.pepperstone.common.entity.UserEntity;
-import com.example.pepperstone.user.respository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -21,7 +15,6 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -58,6 +51,7 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
     // 메세지 전송
     private void sendMessage(String username, ChatDTO chatDTO) {
         log.info("send chatDTO : {}", chatDTO.getMessage());
+
         ChatRoom chatRoom = chatRoomMap.get(chatDTO.getChatRoomId());
         chatRoom.sendMessage(username, chatDTO);
     }
@@ -80,6 +74,7 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
             chatRoomMap.put(chatRoomId, chatRoom);
 
             chatDTO.setMessage(chatDTO.getUsername() + "님이 입장하셨습니다.");
+
             log.info("User entered chat room: {}", chatRoomId);
         } catch (ObjectOptimisticLockingFailureException e) {
             log.error("Optimistic locking failure: {}", e.getMessage());
@@ -90,6 +85,7 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
     // 채팅방 퇴장
     private void exitChatRoom(String username, ChatDTO chatDTO) {
         log.info("exit chatDTO : {}", chatDTO.getChatRoomId());
+
         chatDTO.setMessage(chatDTO.getUsername() + "님이 퇴장하셨습니다.");
         ChatRoom chatRoom = chatRoomMap.get(chatDTO.getChatRoomId());
         chatRoom.exit(username, chatDTO);

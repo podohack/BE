@@ -1,4 +1,4 @@
-package com.example.pepperstone.chatting.websocket.config;
+package com.example.pepperstone.chatting.config;
 
 import com.example.pepperstone.chatting.chat.WebSocketChatHandler;
 import lombok.RequiredArgsConstructor;
