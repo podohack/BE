@@ -1,4 +1,4 @@
-package com.example.pepperstone.chatting.websocket.message;
+package com.example.pepperstone.chat.chatting.message;
 
 // WebSocket 메세지 타입
 public enum WebSocketMessageType {

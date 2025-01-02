@@ -1,4 +1,4 @@
-package com.example.pepperstone.chatting.websocket.config;
+package com.example.pepperstone.chat.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
