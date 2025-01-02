@@ -22,18 +22,23 @@ public class ChatService {
 
     @Transactional
     public void saveMessage(String username, ChatDTO chatDTO) {
-        ChatRoomEntity chatRoom = chatRoomRepo.findWithLockById(chatDTO.getChatRoomId())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid chat room ID"));
+        try {
+            ChatRoomEntity chatRoom = chatRoomRepo.findById(chatDTO.getChatRoomId())
+                    .orElseThrow(() -> new RuntimeException("Chat room not found"));
 
-        UserEntity sender = userRepo.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid sender username"));
+            UserEntity sender = userRepo.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-        final ChatMessageEntity chatMessage = ChatMessageEntity.builder()
-                .message((String) chatDTO.getMessage())
-                .chatRoom(chatRoom)
-                .sender(sender)
-                .build();
+            ChatMessageEntity message = ChatMessageEntity.builder()
+                    .message(String.valueOf(chatDTO.getMessage()))
+                    .chatRoom(chatRoom)
+                    .sender(sender)
+                    .build();
 
-        chatMessageRepo.save(chatMessage);
+            chatMessageRepo.save(message);
+        } catch (Exception e) {
+            log.error("Failed to save message", e);
+            throw new RuntimeException("Message save failed", e);
+        }
     }
 }

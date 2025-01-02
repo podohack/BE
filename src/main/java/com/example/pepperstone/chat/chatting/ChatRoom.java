@@ -1,13 +1,12 @@
 package com.example.pepperstone.chat.chatting;
 
 import com.example.pepperstone.chat.dto.ChatDTO;
-import com.example.pepperstone.chat.chatting.message.WebSocketMessage;
-import com.example.pepperstone.chat.chatting.message.WebSocketMessageType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -17,60 +16,59 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Getter
 @RequiredArgsConstructor
-// socket.io의 Room 개념
 public class ChatRoom {
-    private final Map<String, WebSocketSession> ActiveUserMap = new ConcurrentHashMap<>();
-    // ConcurrentHasMap은 멀티스레드 환경세서 안정하고 성능이 뛰어난 Map이 필요할 경우 사용
-    // WebSocket 세션 관리와 같은 멀티스레드 환경에서 동시 접근이 빈번한 경우 유용
+    private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final Map<String, WebSocketSession> activeUserMap = new ConcurrentHashMap<>();
+
+    private static final String CHAT_ROOMS_KEY = "chat:rooms:";
+    private static final String CHAT_USERS_KEY = "chat:users:";
 
     // 채팅방 입장
     public void enter(ChatDTO chatDTO, WebSocketSession session) {
-        String username = (String) session.getAttributes().get("username");
-        ActiveUserMap.put(username, session);
+        String username = chatDTO.getUsername();
+        Long roomId = chatDTO.getChatRoomId();
 
-        for(Map.Entry<String, WebSocketSession> entry : ActiveUserMap.entrySet()) {
-            try {
-                if(!entry.getKey().equals(username))
-                    entry.getValue().sendMessage(getTextMessage(WebSocketMessageType.ENTER, chatDTO));
-            } catch (Exception e) {
-                log.error(e.getMessage());
-            }
-        }
+        activeUserMap.put(username, session);
+        redisTemplate.opsForHash().put(CHAT_USERS_KEY + roomId, username, session.getId());
+
+        broadcastMessage(username, chatDTO);
     }
 
     // 채팅방 퇴장
     public void exit(String username, ChatDTO chatDTO) {
-        ActiveUserMap.remove(chatDTO.getUsername());
+        Long roomId = chatDTO.getChatRoomId();
 
-        for(Map.Entry<String, WebSocketSession> entry : ActiveUserMap.entrySet()) {
-            try {
-                if(!entry.getKey().equals(username))
-                    entry.getValue().sendMessage(getTextMessage(WebSocketMessageType.EXIT, chatDTO));
-            } catch (Exception e) {
-                log.error(e.getMessage());
-            }
-        }
+        activeUserMap.remove(username);
+        redisTemplate.opsForHash().delete(CHAT_USERS_KEY + roomId, username);
+
+        broadcastMessage(username, chatDTO);
     }
 
     // 메세지 전송
     public void sendMessage(String username, ChatDTO chatDTO) {
-        for(Map.Entry<String, WebSocketSession> entry : ActiveUserMap.entrySet()) {
-            try {
-                if(!entry.getKey().equals(username))
-                    entry.getValue().sendMessage(getTextMessage(WebSocketMessageType.TALK, chatDTO));
-            } catch (Exception e) {
-                log.error(e.getMessage());
-            }
-        }
+        broadcastMessage(username, chatDTO);
     }
 
-    private TextMessage getTextMessage(WebSocketMessageType type, ChatDTO chatDTO) {
+    private void broadcastMessage(String senderUsername, ChatDTO chatDTO) {
+        String message;
         try {
-            return new TextMessage(objectMapper.writeValueAsString(new WebSocketMessage(type, chatDTO)));
+            message = objectMapper.writeValueAsString(chatDTO);
         } catch (JsonProcessingException e) {
-            log.error(e.getMessage());
-            throw new RuntimeException(e);
+            log.error("Message serialization failed", e);
+            return;
         }
+
+        TextMessage textMessage = new TextMessage(message);
+        activeUserMap.forEach((username, session) -> {
+            if (!username.equals(senderUsername) && session.isOpen()) {
+                try {
+                    session.sendMessage(textMessage);
+                } catch (Exception e) {
+                    log.error("Failed to send message to: " + username, e);
+                    activeUserMap.remove(username);
+                }
+            }
+        });
     }
 }
