@@ -42,10 +42,10 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
 
         ChatDTO chatDTO = objectMapper.convertValue(webSocketMessage.getPayload(), ChatDTO.class);
 
-        switch (webSocketMessage.getType()) {
+        switch(webSocketMessage.getType()) {
             case ENTER -> handleEnter(chatDTO, session);
             case TALK -> handleTalk(username, chatDTO, session);
-            case EXIT -> handleExit(username, chatDTO);
+            case EXIT -> handleExit(username, chatDTO, session);
             default -> log.warn("Unsupported message type: {}", webSocketMessage.getType());
         }
     }
@@ -97,23 +97,33 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
         }
     }
 
-    private void handleExit(String username, ChatDTO chatDTO) {
+    private void handleExit(String username, ChatDTO chatDTO, WebSocketSession session) {
         Long chatRoomId = chatDTO.getChatRoomId();
         log.info("User exiting chat room: {}", chatRoomId);
 
+        // 채팅방의 존재 여부 확인
         ChatRoom chatRoom = chatRoomMap.get(chatRoomId);
-        if (chatRoom != null) {
-            chatRoom.exit(username, chatDTO);
-
-            String chatRoomKey = CHAT_ROOM_KEY_PREFIX + chatRoomId;
-            redisTemplate.opsForHash().delete(chatRoomKey, username);
-
-            if (chatRoom.getActiveUserMap().isEmpty()) {
-                chatRoomMap.remove(chatRoomId);
-                log.info("Chat room {} is now empty and removed from memory.", chatRoomId);
-            }
-        } else {
+        if(chatRoom == null) {
             log.warn("ChatRoom not found for ID: {}", chatRoomId);
+            errorHandlering.sendErrorMessage(session, "존재하지 않는 채팅방입니다.");
+            return;
+        }
+
+        if(!chatRoom.getActiveUserMap().containsKey(username)) {
+            log.warn("{} is not part of the chat room {}", username, chatRoomId);
+            errorHandlering.sendErrorMessage(session, "이 채팅방에 참여하지 않는 유저입니다.");
+            return;
+        }
+
+        chatRoom.exit(username, chatDTO);
+
+        String chatRoomKey = CHAT_ROOM_KEY_PREFIX + chatRoomId;
+        redisTemplate.opsForHash().delete(chatRoomKey, username);
+
+        // 채팅방에 남은 사용자가 없으면 채팅방 제거
+        if(chatRoom.getActiveUserMap().isEmpty()) {
+            chatRoomMap.remove(chatRoomId);
+            log.info("Chat room {} is now empty and removed from memory.", chatRoomId);
         }
 
         chatDTO.setMessage(username + "님이 퇴장하셨습니다.");
