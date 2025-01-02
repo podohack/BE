@@ -6,6 +6,8 @@ import com.example.pepperstone.chat.repository.ChatRoomRepository;
 import com.example.pepperstone.chat.service.ChatService;
 import com.example.pepperstone.chat.chatting.message.WebSocketMessage;
 import com.example.pepperstone.common.entity.ChatRoomEntity;
+import com.example.pepperstone.common.entity.UserEntity;
+import com.example.pepperstone.notification.service.FcmService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +19,10 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -27,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WebSocketChatHandler extends TextWebSocketHandler {
     private final ChatRoomRepository chatRoomRepo;
     private final ChatService chatService;
+    private final FcmService fcmService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ErrorHandlering errorHandlering;
 
@@ -75,6 +80,25 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
         try {
             sendMessage(username, chatDTO);
             chatService.saveMessage(username, chatDTO);
+
+            // 채팅방에 없는 모든 사용자에게 푸시 알림 전송
+            Long chatRoomId = chatDTO.getChatRoomId();
+            ChatRoomEntity chatRoom = chatRoomRepo.findById(chatRoomId)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid chat room ID"));
+
+            List<UserEntity> otherUsers = chatRoom.getChatMessages().stream()
+                    .map(message -> message.getSender())
+                    .filter(user -> !user.getUsername().equals(username)) // 본인 제외
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            for (UserEntity user : otherUsers) {
+                fcmService.sendPushNotification(
+                        "새 메시지: " + username,
+                        (String) chatDTO.getMessage(),
+                        user
+                );
+            }
         } catch (ErrorHandlering.ChatRoomNotFoundException e) {
             log.error("Chat room not found", e);
             // 클라이언트로 에러 메시지 전송

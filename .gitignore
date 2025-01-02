@@ -41,3 +41,6 @@ out/
 *.properties
 src/main/resources/application.properties
 src/main/resources/application.yml
+
+## FCM 비공개키
+src/main/resources/firebase/pushtest-firebase-adminsdk.json
