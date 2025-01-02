@@ -16,12 +16,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Getter
 @RequiredArgsConstructor
+// 특정 채팅방에 대한 데이터를 관리하고, 해당 채팅방의 사용자들에게 메시지를 전달하는 역할
 public class ChatRoom {
+    // 채팅방 상태 관리
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
     private final Map<String, WebSocketSession> activeUserMap = new ConcurrentHashMap<>();
 
-    private static final String CHAT_ROOMS_KEY = "chat:rooms:";
     private static final String CHAT_USERS_KEY = "chat:users:";
 
     // 채팅방 입장
@@ -50,25 +51,25 @@ public class ChatRoom {
         broadcastMessage(username, chatDTO);
     }
 
+    // 채팅방에 있는 모든 사용자에게 메세지 전송
     private void broadcastMessage(String senderUsername, ChatDTO chatDTO) {
-        String message;
         try {
-            message = objectMapper.writeValueAsString(chatDTO);
-        } catch (JsonProcessingException e) {
-            log.error("Message serialization failed", e);
-            return;
-        }
+            String message = objectMapper.writeValueAsString(chatDTO);
+            TextMessage textMessage = new TextMessage(message);
 
-        TextMessage textMessage = new TextMessage(message);
-        activeUserMap.forEach((username, session) -> {
-            if (!username.equals(senderUsername) && session.isOpen()) {
-                try {
-                    session.sendMessage(textMessage);
-                } catch (Exception e) {
-                    log.error("Failed to send message to: " + username, e);
-                    activeUserMap.remove(username);
+            activeUserMap.forEach((username, session) -> {
+                if (!username.equals(senderUsername) && session.isOpen()) {
+                    try {
+                        session.sendMessage(textMessage);
+                    } catch (Exception e) {
+                        // 전송 도중 문제 발생 시, 해당 사용자의 세션 제거
+                        log.error("Failed to send message to {}", username, e);
+                        activeUserMap.remove(username);
+                    }
                 }
-            }
-        });
+            });
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize message", e);
+        }
     }
 }

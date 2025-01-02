@@ -1,6 +1,5 @@
 package com.example.pepperstone.chat.chatting;
 
-import com.example.pepperstone.chat.chatting.message.WebSocketMessageType;
 import com.example.pepperstone.chat.dto.ChatDTO;
 import com.example.pepperstone.chat.repository.ChatRoomRepository;
 import com.example.pepperstone.chat.service.ChatService;
@@ -11,7 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -41,19 +39,42 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
 
         ChatDTO chatDTO = objectMapper.convertValue(webSocketMessage.getPayload(), ChatDTO.class);
 
-        switch (webSocketMessage.getType().getValue()) {
-            case "ENTER" -> enterChatRoom(chatDTO,session);
-            case "TALK" -> {
-                sendMessage(username, chatDTO);
-                chatService.saveMessage(username, chatDTO); // 메세지 DB 저장
-            }
-            case "EXIT" -> exitChatRoom(username, chatDTO);
+        switch (webSocketMessage.getType()) {
+            case ENTER -> handleEnter(chatDTO, session);
+            case TALK -> handleTalk(username, chatDTO);
+            case EXIT -> handleExit(username, chatDTO);
+            default -> log.warn("Unsupported message type: {}", webSocketMessage.getType());
         }
     }
 
-    // 메세지 전송
+    private void handleEnter(ChatDTO chatDTO, WebSocketSession session) {
+        try {
+            Long chatRoomId = chatDTO.getChatRoomId();
+            log.info("{} entered chat room {}", chatDTO.getUsername(), chatRoomId);
+
+            ChatRoom chatRoom = chatRoomMap.computeIfAbsent(chatRoomId, id -> {
+                chatRoomRepo.findById(chatRoomId).orElseGet(() -> chatRoomRepo.save(ChatRoomEntity.builder().build()));
+                return new ChatRoom(redisTemplate, objectMapper);
+            });
+
+            chatRoom.enter(chatDTO, session);
+
+            String chatRoomKey = CHAT_ROOM_KEY_PREFIX + chatRoomId;
+            redisTemplate.opsForHash().put(chatRoomKey, chatDTO.getUsername(), session.getId());
+
+            chatDTO.setMessage(chatDTO.getUsername() + "님이 입장하셨습니다.");
+        } catch (Exception e) {
+            log.error("Error entering chat room", e);
+        }
+    }
+
+    private void handleTalk(String username, ChatDTO chatDTO) {
+        sendMessage(username, chatDTO);
+        chatService.saveMessage(username, chatDTO);
+    }
+
     private void sendMessage(String username, ChatDTO chatDTO) {
-        log.info("send chatDTO: {}", chatDTO.getMessage());
+        log.info("Sending message: {}", chatDTO.getMessage());
 
         ChatRoom chatRoom = chatRoomMap.get(chatDTO.getChatRoomId());
         if (chatRoom != null) {
@@ -63,34 +84,7 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
         }
     }
 
-    // 채팅방 입장
-    private void enterChatRoom(ChatDTO chatDTO, WebSocketSession session) {
-        try {
-            Long chatRoomId = chatDTO.getChatRoomId();
-            log.info("User entering chat room: {}", chatRoomId);
-
-            ChatRoomEntity chatRoomEntity = chatRoomRepo.findById(chatRoomId)
-                    .orElseGet(() -> ChatRoomEntity.builder().build());
-
-            chatRoomRepo.save(chatRoomEntity);
-
-            ChatRoom chatRoom = chatRoomMap.computeIfAbsent(chatRoomId, id -> new ChatRoom(redisTemplate, objectMapper));
-            chatRoom.enter(chatDTO, session);
-
-            String chatRoomKey = CHAT_ROOM_KEY_PREFIX + chatRoomId;
-            redisTemplate.opsForHash().put(chatRoomKey, chatDTO.getUsername(), session.getId());
-
-            chatDTO.setMessage(chatDTO.getUsername() + "님이 입장하셨습니다.");
-
-            log.info("User {} entered chat room {}", chatDTO.getUsername(), chatRoomId);
-        } catch (Exception e) {
-            log.error("Error entering chat room: {}", e.getMessage());
-        }
-    }
-
-
-    // 채팅방 퇴장
-    private void exitChatRoom(String username, ChatDTO chatDTO) {
+    private void handleExit(String username, ChatDTO chatDTO) {
         Long chatRoomId = chatDTO.getChatRoomId();
         log.info("User exiting chat room: {}", chatRoomId);
 
@@ -109,6 +103,6 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
             log.warn("ChatRoom not found for ID: {}", chatRoomId);
         }
 
-        chatDTO.setMessage(chatDTO.getUsername() + "님이 퇴장하셨습니다.");
+        chatDTO.setMessage(username + "님이 퇴장하셨습니다.");
     }
 }
