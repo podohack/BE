@@ -1,5 +1,6 @@
 package com.example.pepperstone.chat.chatting;
 
+import com.example.pepperstone.chat.config.ErrorHandlering;
 import com.example.pepperstone.chat.dto.ChatDTO;
 import com.example.pepperstone.chat.repository.ChatRoomRepository;
 import com.example.pepperstone.chat.service.ChatService;
@@ -15,6 +16,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,6 +28,7 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
     private final ChatRoomRepository chatRoomRepo;
     private final ChatService chatService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ErrorHandlering errorHandlering;
 
     private final Map<Long, ChatRoom> chatRoomMap = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -41,7 +44,7 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
 
         switch (webSocketMessage.getType()) {
             case ENTER -> handleEnter(chatDTO, session);
-            case TALK -> handleTalk(username, chatDTO);
+            case TALK -> handleTalk(username, chatDTO, session);
             case EXIT -> handleExit(username, chatDTO);
             default -> log.warn("Unsupported message type: {}", webSocketMessage.getType());
         }
@@ -68,9 +71,18 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
         }
     }
 
-    private void handleTalk(String username, ChatDTO chatDTO) {
-        sendMessage(username, chatDTO);
-        chatService.saveMessage(username, chatDTO);
+    private void handleTalk(String username, ChatDTO chatDTO, WebSocketSession session) {
+        try {
+            sendMessage(username, chatDTO);
+            chatService.saveMessage(username, chatDTO);
+        } catch (ErrorHandlering.ChatRoomNotFoundException e) {
+            log.error("Chat room not found", e);
+            // 클라이언트로 에러 메시지 전송
+            errorHandlering.sendErrorMessage(session, "채팅방을 찾을 수 없습니다.");
+        } catch (Exception e) {
+            log.error("Error while handling message", e);
+            errorHandlering.sendErrorMessage(session, "메시지를 전송하는 중 오류가 발생했습니다.");
+        }
     }
 
     private void sendMessage(String username, ChatDTO chatDTO) {
@@ -81,6 +93,7 @@ public class WebSocketChatHandler extends TextWebSocketHandler {
             chatRoom.sendMessage(username, chatDTO);
         } else {
             log.warn("ChatRoom not found for ID: {}", chatDTO.getChatRoomId());
+            throw new ErrorHandlering.ChatRoomNotFoundException("Chat room not found for ID: " + chatDTO.getChatRoomId());
         }
     }
 
