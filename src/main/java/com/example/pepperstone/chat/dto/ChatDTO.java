@@ -1,4 +1,4 @@
-package com.example.pepperstone.chatting.dto;
+package com.example.pepperstone.chat.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

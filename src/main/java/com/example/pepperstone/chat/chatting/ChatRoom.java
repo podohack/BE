@@ -1,8 +1,8 @@
-package com.example.pepperstone.chatting.chat;
+package com.example.pepperstone.chat.chatting;
 
-import com.example.pepperstone.chatting.dto.ChatDTO;
-import com.example.pepperstone.chatting.chat.message.WebSocketMessage;
-import com.example.pepperstone.chatting.chat.message.WebSocketMessageType;
+import com.example.pepperstone.chat.dto.ChatDTO;
+import com.example.pepperstone.chat.chatting.message.WebSocketMessage;
+import com.example.pepperstone.chat.chatting.message.WebSocketMessageType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;

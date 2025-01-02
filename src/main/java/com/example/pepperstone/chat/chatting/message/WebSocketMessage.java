@@ -1,4 +1,4 @@
-package com.example.pepperstone.chatting.chat.message;
+package com.example.pepperstone.chat.chatting.message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

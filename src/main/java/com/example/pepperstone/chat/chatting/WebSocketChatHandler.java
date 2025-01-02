@@ -1,9 +1,9 @@
-package com.example.pepperstone.chatting.chat;
+package com.example.pepperstone.chat.chatting;
 
-import com.example.pepperstone.chatting.dto.ChatDTO;
-import com.example.pepperstone.chatting.repository.ChatRoomRepository;
-import com.example.pepperstone.chatting.service.ChatService;
-import com.example.pepperstone.chatting.chat.message.WebSocketMessage;
+import com.example.pepperstone.chat.dto.ChatDTO;
+import com.example.pepperstone.chat.repository.ChatRoomRepository;
+import com.example.pepperstone.chat.service.ChatService;
+import com.example.pepperstone.chat.chatting.message.WebSocketMessage;
 import com.example.pepperstone.common.entity.ChatRoomEntity;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

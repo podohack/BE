@@ -1,8 +1,8 @@
-package com.example.pepperstone.chatting.service;
+package com.example.pepperstone.chat.service;
 
-import com.example.pepperstone.chatting.dto.ChatDTO;
-import com.example.pepperstone.chatting.repository.ChatMessageRepository;
-import com.example.pepperstone.chatting.repository.ChatRoomRepository;
+import com.example.pepperstone.chat.dto.ChatDTO;
+import com.example.pepperstone.chat.repository.ChatMessageRepository;
+import com.example.pepperstone.chat.repository.ChatRoomRepository;
 import com.example.pepperstone.common.entity.ChatMessageEntity;
 import com.example.pepperstone.common.entity.ChatRoomEntity;
 import com.example.pepperstone.common.entity.UserEntity;
